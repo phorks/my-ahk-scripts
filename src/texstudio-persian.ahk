@@ -1,16 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
 #HotIf WinActive("ahk_exe texstudio.exe")
-$$::{
-    LangId := GetCurrentKeyboardLayout()
-    ; Enlgish: 0x4090409
-    ; Persian: 0xF03A0429
-    if(LangId = 0xF03A0429) {
-        Send "{Alt Down}{Shift Down}{Shift Up}{Alt Up}{$}"
-    } else {
-        Send "{$}"
-    }
-}
 
 GetCurrentKeyboardLayout() {
     hwnd := DllCall("GetForegroundWindow")
@@ -20,32 +10,47 @@ GetCurrentKeyboardLayout() {
     return DllCall("GetKeyboardLayout", "UInt", threadID, "UInt")
 }
 
-ReleaseCtrlIfNotPhysicallyDown() {
-	; https://stackoverflow.com/a/49034365/1539231
-	If GetKeyState("Ctrl")           ; If the OS believes the key to be in (logical state),
-	{
-		If !GetKeyState("Ctrl","P")  ; but the user isn't physically holding it down (physical state)
-		{
-			Send "{Ctrl Up}"
-		}
-	}
-}
-
-^1::{
-	A_MenuMaskKey := ""
+IsKeyboardLayoutPersian() {
     LangId := GetCurrentKeyboardLayout()
     ; Enlgish: 0x4090409
     ; Persian: 0xF03A0429
-    if(LangId = 0xF03A0429) {
+	return LangId = 0xF03A0429
+}
+
+ChangeKeyboardLayout() {
+	/*
+		; simply sending Alt+Shift does not work since some hotkeys may activate 
+		; while the ctrl is down. Ctrl+Alt+Shift does nothing!
+		Send "{Alt Down}{Shift}{Alt up}" 
+	*/
+	
+	INPUTLANGCHANGE_FORWARD := 0x2
+	WM_INPUTLANGCHANGEREQUEST := 0x0050
+	PostMessage WM_INPUTLANGCHANGEREQUEST, INPUTLANGCHANGE_FORWARD, , , "A"	
+}
+
+$$::{
+    if IsKeyboardLayoutPersian()
+		ChangeKeyboardLayout()
+	Send "{$}"
+}
+
+\::{
+	if IsKeyboardLayoutPersian()
+		ChangeKeyboardLayout()
+	Send "\"
+}
+
+^1::{
+    if IsKeyboardLayoutPersian() {
         old_clip := ClipboardAll() ; Save all clipboard content
         A_Clipboard := "`n\lr{}`n"
+		KeyWait "Control"
         Send "^v"
 		Sleep 100 ; Wait a bit for Ctrl+V to be processed 
         A_Clipboard := old_clip ; Restore previous clipboard content
-        Send "{Up}{End}{Left}{Alt Down}{Shift Down}{Shift Up}"
-		Sleep 10
-		Send "{Alt Up}"		
-		ReleaseCtrlIfNotPhysicallyDown()
+		Send "{Up}{End}{Left}"
+		ChangeKeyboardLayout()
     }
 }
 
@@ -61,21 +66,18 @@ ReleaseCtrlIfNotPhysicallyDown() {
         Sleep 100 ; Wait a bit for Ctrl+V to be processed
         A_Clipboard := old_clip ; Restore previous clipboard content	
         Send "{Up}{End}{Left 2}{Alt Down}{Shift Down}{Shift Up}"
-		Sleep 10
+		Sleep 20
 		Send "{Alt Up}"
-		ReleaseCtrlIfNotPhysicallyDown()
     }
 }
 ^`::{
-	A_MenuMaskKey := ""
     LangId := GetCurrentKeyboardLayout()
     ; Enlgish: 0x4090409
     ; Persian: 0xF03A0429
     if(LangId = 0x4090409) {
-		Send "{Down}{Home}{Alt Down}{Shift Down}{Shift Up}"
-		Sleep 10
-		Send "{Alt Up}"
-		ReleaseCtrlIfNotPhysicallyDown()
+		KeyWait "Control"
+		Send "{Down}{Home}"
+		ChangeKeyboardLayout()
     }
 }
 
